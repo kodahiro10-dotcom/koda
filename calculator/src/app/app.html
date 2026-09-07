@@ -1,0 +1,50 @@
+<table>
+  <tr>
+      <td colspan="4">
+        <div class="display">
+          <span class="display-error">{{ errorMark() }}</span>
+          <input type="text" class="display-value" [value]="display()" disabled />
+        </div>
+      </td>
+  </tr>
+
+  <!-- 上から1段目（空き、AC、C,%） -->
+  <tr>
+    <td></td>
+    <td><button type="button" class="btn-clear" (click)="clear()">C</button></td>
+    <td><button type="button" class="btn-clear" (click)="allClear()">AC</button></td>
+    <td><button type="button" class="btn-operator" (click)="handlePercent()">%</button></td>
+  </tr>
+
+  <!-- 上から2段目（7,8,9,÷） -->
+  <tr>
+    <td><button type="button" class="btn-num" (click)="inputDigit('7')">7</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('8')">8</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('9')">9</button></td>
+    <td><button type="button" class="btn-operator" (click)="handleOperator('/')">÷</button></td>
+  </tr>
+
+  <!-- 上から3段目（4,5,6,×） -->
+  <tr>
+    <td><button type="button" class="btn-num" (click)="inputDigit('4')">4</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('5')">5</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('6')">6</button></td>
+    <td><button type="button" class="btn-operator" (click)="handleOperator('*')">×</button></td>
+  </tr>
+
+  <!-- 上から4段目（1,2,3,-） -->
+  <tr>
+    <td><button type="button" class="btn-num" (click)="inputDigit('1')">1</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('2')">2</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('3')">3</button></td>
+    <td><button type="button" class="btn-operator" (click)="handleOperator('-')">-</button></td>
+  </tr>
+
+  <!-- 上から5段目（0,.,=,+） -->
+  <tr>
+    <td><button type="button" class="btn-num" (click)="inputDigit('0')">0</button></td>
+    <td><button type="button" class="btn-num" (click)="inputDigit('.')">.</button></td>
+    <td><button type="button" class="btn-operator" (click)="handleEqual()">=</button></td>
+    <td><button type="button" class="btn-operator" (click)="handleOperator('+')">+</button></td>
+  </tr>
+</table>
