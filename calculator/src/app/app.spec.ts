@@ -247,6 +247,26 @@ describe('App', () => {
       expect(app.currentInput).not.toBe('Error1');
     });
 
+    it('pressing "." right after an Error gives "0.", not a bare "."', () => {
+      app.inputDigit('5');
+      app.handleOperator('/');
+      app.inputDigit('0');
+      app.handleEqual();
+      expect(app.currentInput).toBe('Error');
+
+      app.inputDigit('.');
+      expect(app.currentInput).toBe('0.');
+      // the stale repeat-calculation state from the division by zero must
+      // not survive to corrupt a later equals press
+      expect(app.lastOperator).toBeNull();
+      expect(app.lastOperand).toBeNull();
+
+      app.inputDigit('7');
+      expect(app.currentInput).toBe('0.7');
+      app.handleEqual();
+      expect(app.currentInput).toBe('0.7');
+    });
+
     it('ignores a second decimal point', () => {
       app.inputDigit('1');
       app.inputDigit('.');
