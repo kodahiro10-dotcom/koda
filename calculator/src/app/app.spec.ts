@@ -360,6 +360,50 @@ describe('App', () => {
     });
   });
 
+  describe('spec requirement: 10億の桁まで計算できること', () => {
+    it('calculates exactly up to 1,000,000,000 (10億) without erroring or overflowing', () => {
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.inputDigit('9');
+      app.handleOperator('+');
+      app.inputDigit('1');
+      app.handleEqual();
+      expect(app.currentInput).toBe('1000000000');
+      expect(app.currentInput.startsWith('E')).toBeFalse();
+    });
+
+    it('still calculates correctly well past 10億, up to the 10-digit ceiling', () => {
+      const result = app.calculate('9999999999', '-', '1');
+      expect(result).toBe('9999999998');
+    });
+  });
+
+  describe('spec requirement: 小数点は最大8位まで表示できること', () => {
+    it('rounds a repeating decimal (1/3) to exactly 8 decimal places', () => {
+      app.inputDigit('1');
+      app.handleOperator('/');
+      app.inputDigit('3');
+      app.handleEqual();
+      expect(app.currentInput).toBe('0.33333333');
+      expect(app.currentInput.split('.')[1].length).toBe(8);
+    });
+
+    it('rounds 22/7 to exactly 8 decimal places', () => {
+      app.inputDigit('2');
+      app.inputDigit('2');
+      app.handleOperator('/');
+      app.inputDigit('7');
+      app.handleEqual();
+      expect(app.currentInput).toBe('3.14285714');
+    });
+  });
+
   describe('display', () => {
     it('shows just the current number when no operator is pending', () => {
       app.inputDigit('4');
