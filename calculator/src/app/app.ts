@@ -161,15 +161,17 @@ export class App {
       default:
         return String(current);
     }
-    if (!Number.isFinite(result)) {
-      return 'Error';
-    }
 
     return this.formatResult(result);
   }
 
   // 新しく作成した関数
   formatResult(result: number): string {
+    // NaN(前の値がErrorのまま演算した場合など)や Infinity は "NaN" という
+    // 文字列のまま表示されてしまうので、ここで一括してErrorにする
+    if (!Number.isFinite(result)) {
+      return 'Error';
+    }
     // 本当に桁あふれしたときだけ E。文字数や指数表記だけで Error にしない
     if (Math.abs(result) >= 1e10) {
       return this.formatOverflow(result);
