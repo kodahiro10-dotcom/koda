@@ -385,6 +385,40 @@ describe('App', () => {
   });
 
   describe('spec requirement: 小数点は最大8位まで表示できること', () => {
+    it('rounds a value smaller than 8 decimal places down to "0", not "" or "-"', () => {
+      // 1 / 1,000,000,000 = 0.000000001, which is finer than the 8-decimal
+      // display can show. It must collapse to "0", never an empty string
+      // or a bare "-" that would corrupt the next calculation.
+      app.inputDigit('1');
+      app.handleOperator('/');
+      for (const d of '1000000000') {
+        app.inputDigit(d);
+      }
+      app.handleEqual();
+      expect(app.currentInput).toBe('0');
+    });
+
+    it('handles a negative value smaller than 8 decimal places the same way', () => {
+      const result = app.calculate('-1', '/', '1000000000');
+      expect(result).toBe('0');
+      expect(result).not.toBe('');
+      expect(result).not.toBe('-');
+    });
+
+    it('recovers correctly after a sub-precision result (no corrupted state)', () => {
+      app.inputDigit('1');
+      app.handleOperator('/');
+      for (const d of '1000000000') {
+        app.inputDigit(d);
+      }
+      app.handleEqual();
+      expect(app.currentInput).toBe('0');
+      app.handleOperator('+');
+      app.inputDigit('5');
+      app.handleEqual();
+      expect(app.currentInput).toBe('5');
+    });
+
     it('rounds a repeating decimal (1/3) to exactly 8 decimal places', () => {
       app.inputDigit('1');
       app.handleOperator('/');

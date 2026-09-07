@@ -163,7 +163,10 @@ export class App {
     }
     // 小数点以下は最大8桁。末尾の0とドットを消す
     let formatted = result.toFixed(8).replace(/\.?0+$/, '');
-    formatted = formatted === '-0' ? '0' : formatted;
+    // ".00000000" までしか消えないので通常はここで空/"-"にはならないが、念のため保険を入れる
+    if (formatted === '' || formatted === '-' || formatted === '-0') {
+      formatted = '0';
+    }
     //10文字を超える場合は10文字でカット
     if (formatted.length > 10) {
       formatted = formatted.slice(0, 10);
