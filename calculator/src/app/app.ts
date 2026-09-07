@@ -68,6 +68,10 @@ export class App {
 
   //演算子ボタンクリック時の処理
   handleOperator(op: string) {
+    // エラー表示中は一般的な電卓と同じく C/AC を押すまで演算子入力を無効化する
+    if (this.currentInput === 'Error' || this.currentInput.startsWith('E')) {
+      return;
+    }
     if (this.operator !== null && !this.waitingForSecondOperand) {
       const result = this.calculate(this.previousInput, this.operator, this.currentInput);
       this.currentInput = result;

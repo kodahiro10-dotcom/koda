@@ -311,16 +311,43 @@ describe('App', () => {
   });
 
   describe('operator pressed right after an Error', () => {
-    it('treats a stale Error operand as producing another Error rather than a bogus number', () => {
+    it('ignores the operator key while Error is displayed, like a real calculator', () => {
       app.inputDigit('5');
       app.handleOperator('/');
       app.inputDigit('0');
       app.handleEqual();
       expect(app.currentInput).toBe('Error');
       app.handleOperator('+');
-      app.inputDigit('3');
+      expect(app.operator).toBeNull();
+      expect(app.currentInput).toBe('Error');
+    });
+
+    it('still lets a fresh digit start a new calculation after an Error', () => {
+      app.inputDigit('5');
+      app.handleOperator('/');
+      app.inputDigit('0');
       app.handleEqual();
       expect(app.currentInput).toBe('Error');
+      app.inputDigit('3');
+      expect(app.currentInput).toBe('3');
+      app.handleOperator('+');
+      app.inputDigit('4');
+      app.handleEqual();
+      expect(app.currentInput).toBe('7');
+    });
+
+    it('also ignores the operator key while an overflowed E-value is displayed', () => {
+      for (const d of '999999') {
+        app.inputDigit(d);
+      }
+      app.handleOperator('*');
+      for (const d of '999999') {
+        app.inputDigit(d);
+      }
+      app.handleEqual();
+      expect(app.currentInput.startsWith('E')).toBeTrue();
+      app.handleOperator('+');
+      expect(app.operator).toBeNull();
     });
   });
 
