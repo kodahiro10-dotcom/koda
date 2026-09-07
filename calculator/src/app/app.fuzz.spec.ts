@@ -98,8 +98,8 @@ function checkInvariants(app: App, trace: string[]): void {
 }
 
 describe('App fuzz testing (randomized button sequences)', () => {
-  const TRIALS = 500;
-  const ACTIONS_PER_TRIAL = 60;
+  const TRIALS = 800;
+  const ACTIONS_PER_TRIAL = 80;
 
   for (let trial = 0; trial < TRIALS; trial++) {
     it(`survives random sequence #${trial} without crashing or corrupting state`, () => {
@@ -117,6 +117,99 @@ describe('App fuzz testing (randomized button sequences)', () => {
     });
   }
 });
+
+describe('App fuzz testing (systematic Error/overflow recovery matrix)', () => {
+  // Deterministically drive the app into each "stuck" state that has
+  // historically caused bugs (a literal Error, and both signs of
+  // overflow), then try every single possible next action from every
+  // state, then keep fuzzing a few more random steps from there. This
+  // targets exactly the class of bug found so far: a value/flag left
+  // over from Error/overflow handling that corrupts a later, unrelated
+  // calculation (e.g. "Error1", or a stale lastOperator/lastOperand
+  // silently re-running an old division by zero).
+  const setups: { name: string; drive: (app: App) => void }[] = [
+    {
+      name: 'Error via operator chain (5 / 0, then queue another operator)',
+      drive: (app) => {
+        app.inputDigit('5');
+        app.handleOperator('/');
+        app.inputDigit('0');
+        app.handleOperator('/');
+      },
+    },
+    {
+      name: 'Error via equals (5 / 0 =)',
+      drive: (app) => {
+        app.inputDigit('5');
+        app.handleOperator('/');
+        app.inputDigit('0');
+        app.handleEqual();
+      },
+    },
+    {
+      name: 'Error via repeat-equals (5 / 0 = =)',
+      drive: (app) => {
+        app.inputDigit('5');
+        app.handleOperator('/');
+        app.inputDigit('0');
+        app.handleEqual();
+        app.handleEqual();
+      },
+    },
+    {
+      name: 'positive overflow (999999 * 999999 =)',
+      drive: (app) => {
+        for (const d of '999999') app.inputDigit(d);
+        app.handleOperator('*');
+        for (const d of '999999') app.inputDigit(d);
+        app.handleEqual();
+      },
+    },
+    {
+      name: 'negative overflow (-999999999 - 999999999 =, via 0 - X)',
+      drive: (app) => {
+        app.inputDigit('0');
+        app.handleOperator('-');
+        for (const d of '999999999') app.inputDigit(d);
+        app.handleEqual();
+        app.handleOperator('-');
+        for (const d of '999999999') app.inputDigit(d);
+        app.handleEqual();
+      },
+    },
+  ];
+
+  for (const setup of setups) {
+    describe(setup.name, () => {
+      for (const firstAction of ACTIONS) {
+        it(`then "${firstAction}", then 20 random steps, stays consistent`, () => {
+          const app = TestBed.configureTestingModule({ imports: [App] }).createComponent(App).componentInstance;
+          setup.drive(app);
+          const trace = [`<setup: ${setup.name}>`, firstAction];
+
+          expect(() => applyAction(app, firstAction)).withContext(trace.join(' ')).not.toThrow();
+          checkInvariants(app, trace);
+
+          const rand = mulberry32(hashString(setup.name + firstAction));
+          for (let step = 0; step < 20; step++) {
+            const action = ACTIONS[Math.floor(rand() * ACTIONS.length)];
+            trace.push(action);
+            expect(() => applyAction(app, action)).withContext(trace.join(' ')).not.toThrow();
+            checkInvariants(app, trace);
+          }
+        });
+      }
+    });
+  }
+});
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return h;
+}
 
 describe('App fuzz testing (targeted numeric sweep through calculate())', () => {
   let app: App;
