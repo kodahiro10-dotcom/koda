@@ -70,6 +70,12 @@ function checkInvariants(app: App, trace: string[]): void {
     expect(Number.isFinite(parsed)).withContext(context() + ` parsed=${parsed}`).toBeTrue();
   } else if (ci === 'Error') {
     expect(isNaN(app.parseOperand(ci))).withContext(context()).toBeTrue();
+  } else {
+    // Anything starting with "E" that isn't the exact literal "Error" must
+    // be a well-formed overflow value ("E" or "E-", a digit, optional
+    // decimals, "e", a sign, and an exponent) - never something like
+    // "Error1" left over from a digit pressed on top of a stale Error.
+    expect(ci).withContext(context()).toMatch(/^E-?\d(\.\d+)?e[+-]\d+$/);
   }
 
   // display() and errorMark() must never throw and must return sane types.

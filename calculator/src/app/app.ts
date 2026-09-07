@@ -19,7 +19,8 @@ export class App {
   //ボタンクリック時の処理
   inputDigit(digit: string) {
     // 上書き中でなければ、10桁以上は足さない
-    const replacing = this.waitingForSecondOperand || this.isResultDisplayed;
+    // (Error/桁あふれの文字列が残っている場合も、長さの都合で弾かれず上書きできるようにする)
+    const replacing = this.waitingForSecondOperand || this.isResultDisplayed || this.currentInput.startsWith('E');
     //小数点を何回も押せてしまうのを防止する
     if (!replacing && digit === '.' && this.currentInput.includes('.')) {
       return;
@@ -45,7 +46,11 @@ export class App {
       this.waitingForSecondOperand = false;
       this.isResultDisplayed = false;
 
-    } else if (this.isResultDisplayed) {
+      // isResultDisplayed/waitingForSecondOperandが立っていなくても、
+      // Errorや桁あふれ(E...)がcurrentInputに残っていることがあるため
+      // (例: 演算子の連続入力中にErrorになった直後にCで演算子だけ取り消した場合)、
+      // その場合も「新しい入力で上書き」にする(そうしないと"Error1"のように結合してしまう)
+    } else if (this.isResultDisplayed || this.currentInput.startsWith('E')) {
       if (digit === '.') {
         this.currentInput = '0.';
       } else {
@@ -59,6 +64,9 @@ export class App {
     } else {
       if (this.currentInput === '' && digit === '.') {
         this.currentInput = '0.';
+      } else if (this.currentInput === '0' && digit !== '.') {
+        // 先頭の0だけの状態で数字を押した場合は追記せず置き換える("0"+"0"→"00"を防ぐ)
+        this.currentInput = digit;
       } else {
         this.currentInput = this.currentInput + digit;
       }

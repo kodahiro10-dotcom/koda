@@ -209,6 +209,44 @@ describe('App', () => {
   });
 
   describe('digit input limits', () => {
+    it('does not append a leading zero ("0" + "0" stays "0", not "00")', () => {
+      app.inputDigit('0');
+      app.inputDigit('0');
+      expect(app.currentInput).toBe('0');
+    });
+
+    it('replaces a lone leading zero with the next digit ("0" + "5" -> "5")', () => {
+      app.inputDigit('0');
+      app.inputDigit('5');
+      expect(app.currentInput).toBe('5');
+    });
+
+    it('still allows "0." for decimal entry from a lone zero', () => {
+      app.inputDigit('0');
+      app.inputDigit('.');
+      expect(app.currentInput).toBe('0.');
+    });
+
+    it('overwrites a stray "Error" left with no pending operator or result flag, instead of appending', () => {
+      // Reproduces a lingering Error that survives with both
+      // waitingForSecondOperand and isResultDisplayed false: an operator
+      // chain computes an Error mid-chain (still queues the next operator),
+      // then C cancels that pending operator without touching currentInput.
+      app.inputDigit('5');
+      app.handleOperator('/');
+      app.inputDigit('0');
+      app.handleOperator('/'); // 5/0 -> 'Error', then queues another '/'
+      expect(app.currentInput).toBe('Error');
+      app.clear(); // cancels the queued '/', currentInput stays 'Error'
+      expect(app.currentInput).toBe('Error');
+      expect(app.waitingForSecondOperand).toBeFalse();
+      expect(app.isResultDisplayed).toBeFalse();
+
+      app.inputDigit('1');
+      expect(app.currentInput).toBe('1');
+      expect(app.currentInput).not.toBe('Error1');
+    });
+
     it('ignores a second decimal point', () => {
       app.inputDigit('1');
       app.inputDigit('.');
