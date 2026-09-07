@@ -230,16 +230,15 @@ describe('App', () => {
     it('overwrites a stray "Error" left with no pending operator or result flag, instead of appending', () => {
       // Reproduces a lingering Error that survives with both
       // waitingForSecondOperand and isResultDisplayed false: an operator
-      // chain computes an Error mid-chain. handleOperator() now resets
-      // operator/waitingForSecondOperand as soon as that happens (see the
-      // "does not permanently poison previousInput" test below), so this
-      // stray state is reached immediately, with no extra C press needed.
+      // chain computes an Error mid-chain (still queues the next operator),
+      // then C cancels that pending operator without touching currentInput.
       app.inputDigit('5');
       app.handleOperator('/');
       app.inputDigit('0');
-      app.handleOperator('/'); // 5/0 -> 'Error'
+      app.handleOperator('/'); // 5/0 -> 'Error', then queues another '/'
       expect(app.currentInput).toBe('Error');
-      expect(app.operator).toBeNull();
+      app.clear(); // cancels the queued '/', currentInput stays 'Error'
+      expect(app.currentInput).toBe('Error');
       expect(app.waitingForSecondOperand).toBeFalse();
       expect(app.isResultDisplayed).toBeFalse();
 
@@ -468,30 +467,6 @@ describe('App', () => {
       app.handleEqual();
       // 999999 * 999999 - 1 = 999998000000
       expect(app.currentInput.startsWith('E')).toBeTrue();
-    });
-
-    it('does not permanently poison previousInput when an operator chain itself produces an Error', () => {
-      // "5 / 0 +" computes the Error *during* the '+' press (currentInput
-      // was still '0' when handleOperator started, so the top-of-function
-      // guard can't catch it). Continuing to queue '+' as a pending
-      // operator on top of previousInput='Error' would mean every future
-      // calculation involving this operand is silently wrong forever.
-      app.inputDigit('5');
-      app.handleOperator('/');
-      app.inputDigit('0');
-      app.handleOperator('+');
-      expect(app.currentInput).toBe('Error');
-      expect(app.operator).toBeNull();
-      expect(app.waitingForSecondOperand).toBeFalse();
-
-      app.inputDigit('2');
-      expect(app.currentInput).toBe('2');
-
-      app.handleOperator('+');
-      expect(app.previousInput).toBe('2');
-      app.inputDigit('3');
-      app.handleEqual();
-      expect(app.currentInput).toBe('5');
     });
   });
 

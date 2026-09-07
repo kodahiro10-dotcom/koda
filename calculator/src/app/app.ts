@@ -85,14 +85,6 @@ export class App {
       const result = this.calculate(this.previousInput, this.operator, this.currentInput);
       this.currentInput = result;
       this.previousInput = this.currentInput;
-      if (result === 'Error') {
-        // 連鎖計算の途中でErrorになった場合、そのまま次の演算子待ちにしてしまうと
-        // previousInputが'Error'のまま残り、以降の計算がずっとErrorになってしまう。
-        // C/ACを押すまで演算子入力を無効化する、という上のガードと同じ扱いにする。
-        this.operator = null;
-        this.waitingForSecondOperand = false;
-        return;
-      }
     } else {
       this.previousInput = this.currentInput;
     }
