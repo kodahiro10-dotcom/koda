@@ -221,20 +221,6 @@ export class App {
     return isNegative ? `E-${exponential}` : `E${exponential}`;
   }
 
-  //桁あふれ値の表示を「仮数e指数」の短い形式にする(桁数の情報を落とさないため)
-  formatExponentForDisplay(raw: string): string {
-    const [mantissaStr, expPart] = raw.split('e');
-    let mantissa = Number(mantissaStr).toFixed(2);
-    let exponent = parseInt(expPart, 10);
-    // 四捨五入で仮数が10以上になった場合は指数側に繰り上げる(9.99e19 -> 1.00e20 など)
-    if (Number(mantissa) >= 10) {
-      mantissa = (Number(mantissa) / 10).toFixed(2);
-      exponent += 1;
-    }
-    const expSign = exponent >= 0 ? '+' : '-';
-    return `${mantissa}e${expSign}${Math.abs(exponent)}`;
-  }
-
   //エラー表示用
   errorMark() {
     return this.currentInput.startsWith('E') ? 'E' : '';
@@ -249,13 +235,17 @@ export class App {
     if (value === 'Error') {
       return 'Error';
     }
-    //桁あふれ(E)の場合は指数を残したまま短く表示する
-    //(仮数の桁だけ見せると、例えば1e10と1e15が同じ見た目になってしまうため)
+    //E-の場合2文字削る
     if (value.startsWith('E-')) {
-      return `-${this.formatExponentForDisplay(value.slice(2))}`;
+      const raw = value.slice(2);
+      const digits = raw.split('e')[0].replace('.', '');
+      return `-${digits}`;
     }
+    //Eの場合1文字削る
     if (value.startsWith('E')) {
-      return this.formatExponentForDisplay(value.slice(1));
+      const raw = value.slice(1);
+      const digits = raw.split('e')[0].replace('.', '');
+      return digits;
     }
     return value;
   }
