@@ -125,7 +125,7 @@ export class App {
     // (200 + 10% -> 200 + 200*10/100 = 220)。× / ÷ の後や演算子なしの場合は
     // 単純に100で割った値にする(50% -> 0.5)。
     let result: number;
-    if ((this.operator === '+' || this.operator === '-') && this.previousInput !== '') {
+    if (this.operator === '+' || this.operator === '-') {
       const previous = this.parseOperand(this.previousInput);
       result = previous * (current / 100);
     } else {
