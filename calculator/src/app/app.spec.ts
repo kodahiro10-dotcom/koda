@@ -160,6 +160,46 @@ describe('App', () => {
       expect(app.currentInput).toBe('0.0000001');
     });
 
+    it('computes an add-on percentage of the first operand after +', () => {
+      // General calculator convention: 200 + 10% means 200 + (200 * 10%) = 220,
+      // not 200 + 0.1.
+      app.inputDigit('2');
+      app.inputDigit('0');
+      app.inputDigit('0');
+      app.handleOperator('+');
+      app.inputDigit('1');
+      app.inputDigit('0');
+      app.handlePercent();
+      expect(app.currentInput).toBe('20');
+      app.handleEqual();
+      expect(app.currentInput).toBe('220');
+    });
+
+    it('computes an add-on percentage of the first operand after -', () => {
+      app.inputDigit('2');
+      app.inputDigit('0');
+      app.inputDigit('0');
+      app.handleOperator('-');
+      app.inputDigit('1');
+      app.inputDigit('0');
+      app.handlePercent();
+      app.handleEqual();
+      expect(app.currentInput).toBe('180');
+    });
+
+    it('treats percent as a plain fraction (not add-on) after * or /', () => {
+      app.inputDigit('2');
+      app.inputDigit('0');
+      app.inputDigit('0');
+      app.handleOperator('*');
+      app.inputDigit('1');
+      app.inputDigit('0');
+      app.handlePercent();
+      expect(app.currentInput).toBe('0.1');
+      app.handleEqual();
+      expect(app.currentInput).toBe('20');
+    });
+
     it('is a no-op while waiting for the second operand', () => {
       app.inputDigit('5');
       app.handleOperator('+');
@@ -222,6 +262,28 @@ describe('App', () => {
       const big = -12345678901;
       const formatted = app.formatOverflow(big);
       expect(app.parseOperand(formatted)).toBeCloseTo(big, -1);
+    });
+
+    it('keeps magnitude visible on screen instead of collapsing to identical digits', () => {
+      // Before the fix, visibleNumber() dropped the exponent entirely, so
+      // 1e10 and 1e15 both rendered as the same "1000000000" string even
+      // though they differ by a factor of 100,000.
+      const small = app.visibleNumber(app.formatOverflow(1e10));
+      const large = app.visibleNumber(app.formatOverflow(1e15));
+      expect(small).not.toBe(large);
+      expect(small).toBe('1.00e+10');
+      expect(large).toBe('1.00e+15');
+    });
+
+    it('shows a negative overflowed value with both the sign and the correct exponent', () => {
+      expect(app.visibleNumber(app.formatOverflow(-1e10))).toBe('-1.00e+10');
+    });
+
+    it('normalizes the mantissa when rounding pushes it to 10', () => {
+      // 9.999999998e19 rounded to 2 decimals is 10.00, which must carry into
+      // the exponent (1.00e+20), not display as the invalid "10.00e+19".
+      const huge = 9999999999 * 9999999999;
+      expect(app.visibleNumber(app.formatOverflow(huge))).toBe('1.00e+20');
     });
   });
 
@@ -336,7 +398,10 @@ describe('App', () => {
       expect(app.currentInput).toBe('7');
     });
 
-    it('also ignores the operator key while an overflowed E-value is displayed', () => {
+    it('still allows continuing a calculation from an overflowed E-value (unlike a real Error)', () => {
+      // Overflow keeps full precision internally (see formatOverflow's
+      // comment), so a real calculator lets you keep computing with it -
+      // only a genuine Error (divide by zero, etc.) should require C/AC.
       for (const d of '999999') {
         app.inputDigit(d);
       }
@@ -346,8 +411,12 @@ describe('App', () => {
       }
       app.handleEqual();
       expect(app.currentInput.startsWith('E')).toBeTrue();
-      app.handleOperator('+');
-      expect(app.operator).toBeNull();
+      app.handleOperator('-');
+      expect(app.operator).toBe('-');
+      app.inputDigit('1');
+      app.handleEqual();
+      // 999999 * 999999 - 1 = 999998000000
+      expect(app.currentInput.startsWith('E')).toBeTrue();
     });
   });
 
@@ -453,6 +522,14 @@ describe('App', () => {
       app.handleEqual();
       expect(app.currentInput).toBe('0.33333333');
       expect(app.currentInput.split('.')[1].length).toBe(8);
+    });
+
+    it('rounds up correctly for 2/3 (0.6666...7, not truncated to 0.66666666)', () => {
+      app.inputDigit('2');
+      app.handleOperator('/');
+      app.inputDigit('3');
+      app.handleEqual();
+      expect(app.currentInput).toBe('0.66666667');
     });
 
     it('rounds 22/7 to exactly 8 decimal places', () => {

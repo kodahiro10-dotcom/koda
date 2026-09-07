@@ -69,7 +69,8 @@ export class App {
   //演算子ボタンクリック時の処理
   handleOperator(op: string) {
     // エラー表示中は一般的な電卓と同じく C/AC を押すまで演算子入力を無効化する
-    if (this.currentInput === 'Error' || this.currentInput.startsWith('E')) {
+    // (桁あふれ値は内部に正確な値を保持しているので、これとは区別して計算を続けさせる)
+    if (this.currentInput === 'Error') {
       return;
     }
     if (this.operator !== null && !this.waitingForSecondOperand) {
@@ -120,8 +121,16 @@ export class App {
     if (isNaN(current)) {
       return;
     }
-    //100で割る
-    const result = current / 100;
+    // 一般的な電卓の仕様: + / - の後の%は「1つ目の値に対する割合」
+    // (200 + 10% -> 200 + 200*10/100 = 220)。× / ÷ の後や演算子なしの場合は
+    // 単純に100で割った値にする(50% -> 0.5)。
+    let result: number;
+    if ((this.operator === '+' || this.operator === '-') && this.previousInput !== '') {
+      const previous = this.parseOperand(this.previousInput);
+      result = previous * (current / 100);
+    } else {
+      result = current / 100;
+    }
     const formatted = this.formatResult(result);
     this.currentInput = formatted;
 
@@ -212,6 +221,20 @@ export class App {
     return isNegative ? `E-${exponential}` : `E${exponential}`;
   }
 
+  //桁あふれ値の表示を「仮数e指数」の短い形式にする(桁数の情報を落とさないため)
+  formatExponentForDisplay(raw: string): string {
+    const [mantissaStr, expPart] = raw.split('e');
+    let mantissa = Number(mantissaStr).toFixed(2);
+    let exponent = parseInt(expPart, 10);
+    // 四捨五入で仮数が10以上になった場合は指数側に繰り上げる(9.99e19 -> 1.00e20 など)
+    if (Number(mantissa) >= 10) {
+      mantissa = (Number(mantissa) / 10).toFixed(2);
+      exponent += 1;
+    }
+    const expSign = exponent >= 0 ? '+' : '-';
+    return `${mantissa}e${expSign}${Math.abs(exponent)}`;
+  }
+
   //エラー表示用
   errorMark() {
     return this.currentInput.startsWith('E') ? 'E' : '';
@@ -226,17 +249,13 @@ export class App {
     if (value === 'Error') {
       return 'Error';
     }
-    //E-の場合2文字削る
+    //桁あふれ(E)の場合は指数を残したまま短く表示する
+    //(仮数の桁だけ見せると、例えば1e10と1e15が同じ見た目になってしまうため)
     if (value.startsWith('E-')) {
-      const raw = value.slice(2);
-      const digits = raw.split('e')[0].replace('.', '');
-      return `-${digits}`;
+      return `-${this.formatExponentForDisplay(value.slice(2))}`;
     }
-    //Eの場合1文字削る
     if (value.startsWith('E')) {
-      const raw = value.slice(1);
-      const digits = raw.split('e')[0].replace('.', '');
-      return digits;
+      return this.formatExponentForDisplay(value.slice(1));
     }
     return value;
   }
