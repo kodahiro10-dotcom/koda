@@ -180,6 +180,11 @@ export class App {
     if (formatted === '' || formatted === '-' || formatted === '-0') {
       formatted = '0';
     }
+    // 本当は0ではないのに8桁丸めで0になってしまう場合は、表示できる最小値にする
+    // (マイナスは符号の分、小数を7桁にして10文字に収める)
+    if (formatted === '0' && result !== 0) {
+      formatted = result > 0 ? '0.00000001' : '-0.0000001';
+    }
     //10文字を超える場合は10文字でカット
     if (formatted.length > 10) {
       formatted = formatted.slice(0, 10);
