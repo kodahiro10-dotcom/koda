@@ -259,6 +259,107 @@ describe('App', () => {
     });
   });
 
+  describe('negative numbers', () => {
+    it('produces a negative result from subtraction', () => {
+      app.inputDigit('3');
+      app.handleOperator('-');
+      app.inputDigit('5');
+      app.handleEqual();
+      expect(app.currentInput).toBe('-2');
+    });
+
+    it('clears a single-digit negative result to empty in one C press', () => {
+      app.inputDigit('3');
+      app.handleOperator('-');
+      app.inputDigit('5');
+      app.handleEqual();
+      expect(app.currentInput).toBe('-2');
+      app.clear();
+      expect(app.currentInput).toBe('');
+    });
+
+    it('backspaces a multi-digit negative number one digit at a time', () => {
+      app.inputDigit('3');
+      app.handleOperator('-');
+      app.inputDigit('5');
+      app.inputDigit('0');
+      app.handleEqual();
+      expect(app.currentInput).toBe('-47');
+      app.allClear();
+      // re-derive a multi-digit negative currentInput by typing it back in
+      // (there is no +/- key, so drive it through clear()'s digit path)
+      app.inputDigit('4');
+      app.inputDigit('7');
+      // simulate having a negative number in currentInput directly, as the
+      // component itself only ever produces one via calculate()
+      (app as any).currentInput = '-47';
+      app.clear();
+      expect(app.currentInput).toBe('-4');
+    });
+
+    it('continuing to type digits after a negative result appends correctly', () => {
+      app.inputDigit('3');
+      app.handleOperator('-');
+      app.inputDigit('5');
+      app.handleEqual();
+      expect(app.currentInput).toBe('-2');
+      expect(app.isResultDisplayed).toBeTrue();
+      app.inputDigit('9');
+      // isResultDisplayed should make this overwrite, not append to "-2"
+      expect(app.currentInput).toBe('9');
+    });
+  });
+
+  describe('operator pressed right after an Error', () => {
+    it('treats a stale Error operand as producing another Error rather than a bogus number', () => {
+      app.inputDigit('5');
+      app.handleOperator('/');
+      app.inputDigit('0');
+      app.handleEqual();
+      expect(app.currentInput).toBe('Error');
+      app.handleOperator('+');
+      app.inputDigit('3');
+      app.handleEqual();
+      expect(app.currentInput).toBe('Error');
+    });
+  });
+
+  describe('overflow boundary', () => {
+    it('does not overflow a result just under 1e10', () => {
+      const result = app.calculate('9999999999', '+', '0');
+      expect(result).toBe('9999999999');
+      expect(result.startsWith('E')).toBeFalse();
+    });
+
+    it('overflows a result at exactly 1e10', () => {
+      const result = app.calculate('9999999999', '+', '1');
+      expect(result.startsWith('E')).toBeTrue();
+    });
+  });
+
+  describe('percent chained with more operators', () => {
+    it('can be applied twice in a row', () => {
+      app.inputDigit('2');
+      app.inputDigit('0');
+      app.inputDigit('0');
+      app.handlePercent();
+      expect(app.currentInput).toBe('2');
+      app.handlePercent();
+      expect(app.currentInput).toBe('0.02');
+    });
+
+    it('feeds into a following operator as the previous operand', () => {
+      app.inputDigit('5');
+      app.inputDigit('0');
+      app.handlePercent();
+      expect(app.currentInput).toBe('0.5');
+      app.handleOperator('+');
+      app.inputDigit('1');
+      app.handleEqual();
+      expect(app.currentInput).toBe('1.5');
+    });
+  });
+
   describe('display', () => {
     it('shows just the current number when no operator is pending', () => {
       app.inputDigit('4');
